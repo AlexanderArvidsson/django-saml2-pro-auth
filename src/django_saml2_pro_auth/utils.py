@@ -65,10 +65,10 @@ def prepare_django_request(request):
         'script_name': request.META['PATH_INFO'],
         'get_data': request.GET.copy(),
         'post_data': request.POST.copy(),
-        'query_string': request.META['QUERY_STRING']
+        'query_string': request.META['QUERY_STRING'],
         # TODO: add this as a config item for settings.py
         # Uncomment if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
-        # 'lowercase_urlencoding': True,
+         'lowercase_urlencoding': True,
     }
 
     if server_port:
