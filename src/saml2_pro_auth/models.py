@@ -39,6 +39,12 @@ class SamlProvider(models.Model):
         help_text="A PEM encoded public certificate provided by your Identity Provider.",
         blank=False,
     )
+    idp_x509_signing_key = models.TextField(
+        "IdP Certificate Signing",
+        help_text="A PEM encoded public certificate provided by your Identity Provider.",
+        null=True,
+        blank=True,
+    )
     idp_sso_url = models.TextField(
         "IdP Single Sign-On URL",
         help_text="The single sign-on service URL provided by your IdP.",
@@ -112,16 +118,25 @@ class SamlProvider(models.Model):
         """
         Interprolate settings from model into config
         """
+        idp_certificates = dict()
+        if self.idp_x509_signing_key is not None:
+            idp_certificates['x509certMulti'] = dict(
+                encryption=[self.idp_x509],
+                signing=[self.idp_x509_signing_key],
+            )
+        else:
+            idp_certificates['x509cert'] = self.idp_x509
+
         config = deepcopy(defaults)
         config = dict(
-            idp=dict(
-                entityId=self.idp_issuer,
-                x509cert=self.idp_x509,
-                singleSignOnService=dict(
+            idp={
+                "entityId": self.idp_issuer,
+                "singleSignOnService": dict(
                     url=self.idp_sso_url,
                     binding=self.idp_sso_binding,
                 ),
-            ),
+                **idp_certificates,
+            },
             sp={
                 **config.setdefault("sp", dict()),
                 **{
