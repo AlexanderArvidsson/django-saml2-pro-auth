@@ -32,10 +32,10 @@ register_converter(ProviderConverter, "samlp")
 
 # Class based views
 urlpatterns = [
-    path("<samlp:provider>/acs/", AcsView.as_view(), name="acs"),
-    path("<samlp:provider>/login/", SsoView.as_view(), name="login"),
+    path("<str:provider>/acs/", AcsView.as_view(), name="acs"),
+    path("<str:provider>/login/", SsoView.as_view(), name="login"),
     path(
-        "<samlp:provider>/metadata/",
+        "<str:provider>/metadata/",
         MetadataView.as_view(),
         name="metadata",
     ),

@@ -105,7 +105,7 @@ def build_sp_urls(req: dict, provider_key: str) -> dict:
     # Get a path for the provider and then cut off the end of the path
     acs_path = reverse("saml2_pro_auth:acs", kwargs={"provider": provider_key})
     base_path = f"{'/'.join(acs_path.split('/')[:-2])}/"
-    entity_url = f"{protocol}://{req['http_host']}{base_path}"
+    entity_url = f"{protocol}://{req['http_host']}{base_path}metadata/"
     acs_url = f"{protocol}://{req['http_host']}{acs_path}"
     return {
         "entityId": entity_url,
