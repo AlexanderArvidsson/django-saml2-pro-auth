@@ -83,10 +83,8 @@ def get_provider_settings(req: dict, provider_key: str) -> Tuple[dict, dict]:
                 app_settings.SAML_PROVIDER_CONFIG_TEMPLATE
             )
             user_map = samlp.attributes
-        except (SamlProvider.DoesNotExist, ValueError) as err:
-            raise SAMLSettingsError(
-                "SAML_PROVIDERS is not defined in settings"
-            ) from err
+        except (SamlProvider.DoesNotExist, ValueError):
+            raise Http404("SAML provider not found")
 
     urls = build_sp_urls(req, provider_key)
     # TODO: Skip if already defined in config
