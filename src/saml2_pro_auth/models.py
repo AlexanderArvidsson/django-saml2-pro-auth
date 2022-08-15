@@ -20,6 +20,24 @@ from .constants import (
 )
 
 
+class PEMCertificate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(
+        "Name",
+        help_text="A descriptive name for the PEM certificate.",
+        max_length=50,
+        blank=False,
+    )
+    certificate = models.TextField(
+        "Certificate",
+        help_text="A PEM encoded public certificate.",
+        blank=False,
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class SamlProvider(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(
@@ -28,22 +46,22 @@ class SamlProvider(models.Model):
         max_length=50,
         blank=False,
     )
+    idp_x509_signing_certificates = models.ManyToManyField(
+        PEMCertificate,
+        verbose_name="IdP Signing Certificates",
+        related_name="signing_providers",
+    )
+    idp_x509_encryption_certificates = models.ManyToManyField(
+        PEMCertificate,
+        verbose_name="IdP Encryption Certificates",
+        related_name="encryption_providers",
+        blank=True,
+    )
     idp_issuer = models.TextField(
         "IdP Issuer (Entity ID)",
         help_text="The Issuer or Entity ID from your Identity Provider.",
         blank=False,
         max_length=1024,
-    )
-    idp_x509 = models.TextField(
-        "IdP Certificate",
-        help_text="A PEM encoded public certificate provided by your Identity Provider.",
-        blank=False,
-    )
-    idp_x509_signing_key = models.TextField(
-        "IdP Certificate Signing",
-        help_text="A PEM encoded public certificate provided by your Identity Provider.",
-        null=True,
-        blank=True,
     )
     idp_sso_url = models.TextField(
         "IdP Single Sign-On URL",
@@ -118,14 +136,40 @@ class SamlProvider(models.Model):
         """
         Interprolate settings from model into config
         """
+        certs = dict(
+            encryption=list(
+                self.idp_x509_encryption_certificates.values_list(
+                    "certificate", flat=True
+                )
+            ),
+            signing=list(
+                self.idp_x509_signing_certificates.values_list("certificate", flat=True)
+            ),
+        )
+
         idp_certificates = dict()
-        if self.idp_x509_signing_key is not None:
-            idp_certificates['x509certMulti'] = dict(
-                encryption=[self.idp_x509],
-                signing=[self.idp_x509_signing_key],
-            )
-        else:
-            idp_certificates['x509cert'] = self.idp_x509
+
+        if certs is not None:
+            if (
+                len(certs) == 1
+                and (
+                    ("signing" in certs and len(certs["signing"]) == 1)
+                    or ("encryption" in certs and len(certs["encryption"]) == 1)
+                )
+            ) or (
+                ("signing" in certs and len(certs["signing"]) == 1)
+                and (
+                    "encryption" in certs
+                    and len(certs["encryption"]) == 1
+                    and certs["signing"][0] == certs["encryption"][0]
+                )
+            ):
+                if "signing" in certs:
+                    idp_certificates["x509cert"] = certs["signing"][0]
+                else:
+                    idp_certificates["x509cert"] = certs["encryption"][0]
+            else:
+                idp_certificates["x509certMulti"] = certs
 
         config = deepcopy(defaults)
         config = dict(
