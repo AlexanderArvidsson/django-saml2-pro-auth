@@ -10,6 +10,7 @@ from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
 from .settings import app_settings
 from .utils import SAMLError, SAMLSettingsError, init_saml_auth
+from .constants import SAML_ERROR_USER_NONE, SAML_ERROR_BAD_REQUEST
 
 
 class SamlBadRequest(SuspiciousOperation):
@@ -93,16 +94,23 @@ class AcsView(GenericSamlView):
                 else:
                     response = redirect(OneLogin_Saml2_Utils.get_self_url(req))
             else:
-                error_reason = "Bad Request"
-                if auth.get_settings().is_debug_active():
-                    error_reason = "User lookup Failed"
-                raise SamlBadRequest("%s" % error_reason)
+                if hasattr(app_settings, 'SAML_FAIL_REDIRECT'):
+                    response = redirect(app_settings.SAML_FAIL_REDIRECT.format(error=SAML_ERROR_USER_NONE))
+                else:
+                    error_reason = "Bad Request"
+                    if auth.get_settings().is_debug_active():
+                        error_reason = "User lookup Failed"
+                    raise SamlBadRequest("%s" % error_reason)
 
         else:
-            error_reason = "Bad Request"
-            if auth.get_settings().is_debug_active():
-                error_reason = auth.get_last_error_reason()
-            raise SamlBadRequest("%s" % error_reason)
+            if hasattr(app_settings, 'SAML_FAIL_REDIRECT'):
+                response = redirect(app_settings.SAML_FAIL_REDIRECT.format(error=SAML_ERROR_BAD_REQUEST))
+            else:
+                error_reason = "Bad Request"
+                if auth.get_settings().is_debug_active():
+                    error_reason = auth.get_last_error_reason()
+                raise SamlBadRequest("%s" % error_reason)
+
 
         response.delete_cookie("sp_auth")
         return response
